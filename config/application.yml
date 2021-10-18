@@ -1,0 +1,7 @@
+env:
+  env: local
+  debug: true
+browser-manager:
+  chromium_path: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+  page_maximum_per_task: 20
+  slience: True
