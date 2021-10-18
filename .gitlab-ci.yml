@@ -1,0 +1,13 @@
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  script:
+    - docker build -t $CI_PROJECT_NAME:$CI_PIPELINE_ID .
+    - docker rm -f $CI_PROJECT_NAME || true
+    - docker run -d --network nginx -p 9000:9001 --name $CI_PROJECT_NAME $CI_PROJECT_NAME:$CI_PIPELINE_ID
+  only:
+    - master
+  tags:
+    - docker
