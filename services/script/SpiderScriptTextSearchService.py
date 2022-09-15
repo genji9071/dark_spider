@@ -66,6 +66,8 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
         raise GeneralException("get_text_search definition not found")
     info = founded['definitions'][0]
     content = info['content']
-    image_url = info['images'][0]['scaled']['path']
+    image_url = None
+    if info['images']:
+        image_url = info['images'][0]['scaled']['path']
     id = info['id']
     return SpiderScriptTextSearchResultVO(content=content, image_url=image_url, link=f"https://jikipedia.com/definition/{str(id)}")
