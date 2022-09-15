@@ -60,7 +60,7 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
     if not founded:
         raise GeneralException("get_text_search definition not found")
     info = founded['definitions'][0]
-    title = founded['term']['title']
+    title = info['term']['title']
     content = info['content']
     image_url = None
     if info['images']:
