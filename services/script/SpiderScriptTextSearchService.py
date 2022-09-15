@@ -1,7 +1,4 @@
-import urllib.parse
-
 import requests
-from pyppeteer.errors import PageError
 from pyppeteer.network_manager import Response
 
 from exceptions.GeneralException import GeneralException
@@ -12,7 +9,7 @@ from vo.script.SpiderScriptTextSearchResultVO import SpiderScriptTextSearchResul
 def get_search_entities(xid, text):
     url = "https://api.jikipedia.com/go/search_entities"
 
-    payload = {"phrase":text,"page":1,"size":60}
+    payload = {"phrase": text, "page": 1, "size": 60}
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
@@ -44,7 +41,7 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
             return True
         else:
             return False
-    # url = f'https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}'
+
     url = "https://jikipedia.com/"
     search_entities_response: Response = None
     try:
@@ -54,8 +51,6 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
         pass
     if not search_entities_response:
         raise GeneralException("get_text_search call failed")
-    # if search_entities_response.status != 200 or not await search_entities_response.text():
-    #     raise GeneralException(f"get_text_search search_entities_response.text: {search_entities_response.status}")
     xid = search_entities_response.request.headers['xid']
     response_json = get_search_entities(xid, text)
     data = response_json['data']
@@ -65,9 +60,11 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
     if not founded:
         raise GeneralException("get_text_search definition not found")
     info = founded['definitions'][0]
+    title = founded['term']['title']
     content = info['content']
     image_url = None
     if info['images']:
         image_url = info['images'][0]['scaled']['path']
     id = info['id']
-    return SpiderScriptTextSearchResultVO(content=content, image_url=image_url, link=f"https://jikipedia.com/definition/{str(id)}")
+    return SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
+                                          link=f"https://jikipedia.com/definition/{str(id)}")
