@@ -5,7 +5,7 @@ from utils.BrowserManager import browser_manager
 
 
 class BrowserPage():
-    def __init__(self, url, headers: dict = None, cookies: dict = None, mobile_mode=False, response_func: list=None, timeout=30):
+    def __init__(self, url, headers: dict = None, cookies: dict = None, mobile_mode=False, response_func: list=None, timeout=30000, is_enable_js=True):
         self.browser_manager = browser_manager
         self.url = url
         self.mobile_mode = mobile_mode
@@ -13,6 +13,7 @@ class BrowserPage():
         self.cookies = cookies or {}
         self.response_func = response_func
         self.timeout = timeout
+        self.is_enable_js = is_enable_js
 
     # 进入with语句自动执行
     async def __aenter__(self) -> Page:
@@ -23,7 +24,7 @@ class BrowserPage():
             if self.response_func:
                 for func in self.response_func:
                     self.page.on("response", func)
-
+            await self.page.setJavaScriptEnabled(self.is_enable_js)
             await self.page.goto(self.url, timeout=self.timeout)
             return self.page
         finally:

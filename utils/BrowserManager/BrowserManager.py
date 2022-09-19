@@ -1,7 +1,7 @@
 from typing import List
 
 from loguru import logger
-from pyppeteer import launch
+from pyppeteer import launch, launcher
 from pyppeteer.page import Page
 
 from config import config
@@ -15,6 +15,7 @@ class BrowserManager():
         event_loop_manager.run_until_complete(self.initialize())
 
     async def initialize(self):
+        launcher.DEFAULT_ARGS.remove('--enable-automation')
         self.browser = await launch(
             handleSIGINT=False,
             handleSIGTERM=False,
@@ -33,10 +34,9 @@ class BrowserManager():
             await page.setViewport(viewport={'width': 414, 'height': 736, 'isMobile': True, 'hasTouch': True})
         else:
             await page.setUserAgent(
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36')
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36')
             await page.setViewport(viewport={'width': 1536, 'height': 768})
-        await page.evaluateOnNewDocument('() =>{ Object.defineProperties(navigator,'
-                                         '{ webdriver:{ get: () => false } }) }')
+        await page.evaluateOnNewDocument('() =>{ Object.defineProperties(navigator, { webdriver:{ get: () => undefined } }) }')
         return page
 
     async def close_page(self, page: Page):

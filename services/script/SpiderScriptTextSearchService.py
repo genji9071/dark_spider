@@ -1,3 +1,6 @@
+import urllib.parse
+
+import bs4
 import requests
 from pyppeteer.network_manager import Response
 
@@ -48,9 +51,9 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
     url = "https://jikipedia.com/"
     search_entities_response: Response = None
     try:
-        async with BrowserPage(url, mobile_mode=False, response_func=[get_xid], timeout=0) as page:
+        async with BrowserPage(url, mobile_mode=False, response_func=[get_xid], timeout=0, is_enable_js=False) as page:
             pass
-    except Exception:
+    except Exception as ex:
         pass
     if not search_entities_response:
         raise GeneralException("get_text_search call failed")
@@ -71,3 +74,19 @@ async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
     id = info['id']
     return SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
                                           link=f"https://jikipedia.com/definition/{str(id)}")
+
+def get_text_search2(text: str) -> SpiderScriptTextSearchResultVO:
+    url = f"https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}&category=definition"
+    response = requests.request("GET", url)
+    soup = bs4.BeautifulSoup(response.text, 'html.parser')
+    tiles = soup.select(".tile")
+    link = tiles[0].select_one(".title-container").attrs['href']
+    response = requests.request("GET", link)
+    soup = bs4.BeautifulSoup(response.text, 'html.parser')
+    title = tiles[0].select_one(".title-container").text
+    content = tiles[0].select_one(".card-content").text
+    image_url = None
+    if 'src' in soup.select_one(".show-images-img").attrs:
+        image_url = soup.select_one(".show-images-img").attrs['src']
+    return SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
+                                          link=link)
