@@ -30,7 +30,10 @@ def get_search_entities(xid, text):
         'sec-ch-ua-platform': '"macOS"'
     }
 
-    return requests.request("POST", url, headers=headers, json=payload).json()
+    response = requests.request("POST", url, headers=headers, json=payload)
+    if response.status_code != 200:
+        raise GeneralException(response.status_code)
+    return response.json()
 
 
 async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
