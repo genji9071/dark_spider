@@ -1,11 +1,10 @@
 import urllib.parse
+from typing import List
 
 import bs4
 import requests
-from pyppeteer.network_manager import Response
 
 from exceptions.GeneralException import GeneralException
-from utils.BrowserManager.BrowserPage import BrowserPage
 from vo.script.SpiderScriptTextSearchResultVO import SpiderScriptTextSearchResultVO
 
 
@@ -39,54 +38,21 @@ def get_search_entities(xid, text):
     return response.json()
 
 
-async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
-    def get_xid(response: Response):
-        if response.url.startswith("https://api.jikipedia.com/go"):
-            nonlocal search_entities_response
-            search_entities_response = response
-            return True
-        else:
-            return False
-
-    url = "https://jikipedia.com/"
-    search_entities_response: Response = None
-    try:
-        async with BrowserPage(url, mobile_mode=False, response_func=[get_xid], timeout=0, is_enable_js=False) as page:
-            pass
-    except Exception as ex:
-        pass
-    if not search_entities_response:
-        raise GeneralException("get_text_search call failed")
-    xid = search_entities_response.request.headers['xid']
-    response_json = get_search_entities(xid, text)
-    data = response_json['data']
-    if not data:
-        raise GeneralException("get_text_search data not found")
-    founded = filter(lambda x: x['category'] == "definition", data).__next__()
-    if not founded:
-        raise GeneralException("get_text_search definition not found")
-    info = founded['definitions'][0]
-    title = info['term']['title']
-    content = info['plaintext']
-    image_url = None
-    if info['images']:
-        image_url = info['images'][0]['scaled']['path']
-    id = info['id']
-    return SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
-                                          link=f"https://jikipedia.com/definition/{str(id)}")
-
-def get_text_search2(text: str) -> SpiderScriptTextSearchResultVO:
+def get_text_search2(text: str) -> List[SpiderScriptTextSearchResultVO]:
     url = f"https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}&category=definition"
     response = requests.request("GET", url)
     soup = bs4.BeautifulSoup(response.text, 'html.parser')
     tiles = soup.select(".tile")
-    link = tiles[0].select_one(".title-container").attrs['href']
-    response = requests.request("GET", link)
-    soup = bs4.BeautifulSoup(response.text, 'html.parser')
-    title = tiles[0].select_one(".title-container").text
-    content = tiles[0].select_one(".card-content").text
-    image_url = None
-    if 'src' in soup.select_one(".show-images-img").attrs:
-        image_url = soup.select_one(".show-images-img").attrs['src']
-    return SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
-                                          link=link)
+    result = []
+    for tile in tiles:
+        link = tile.select_one(".title-container").attrs['href']
+        response = requests.request("GET", link)
+        soup = bs4.BeautifulSoup(response.text, 'html.parser')
+        title = tile.select_one(".title-container").text
+        content = tile.select_one(".card-content").text
+        image_url = None
+        if soup.select_one(".show-images-img") and 'src' in soup.select_one(".show-images-img").attrs:
+            image_url = soup.select_one(".show-images-img").attrs['src']
+        result.append(SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
+                                              link=link))
+    return result
