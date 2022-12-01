@@ -1,10 +1,14 @@
+import asyncio
 import urllib.parse
 from typing import List
 
 import bs4
 import requests
+from requests import Response
 
 from exceptions.GeneralException import GeneralException
+from utils.BrowserManager.BrowserPage import BrowserPage
+from utils.EventLoopManagerUtils import event_loop_manager
 from vo.script.SpiderScriptTextSearchResultVO import SpiderScriptTextSearchResultVO
 
 
@@ -37,6 +41,42 @@ def get_search_entities(xid, text):
         raise GeneralException(response.status_code)
     return response.json()
 
+async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
+    # def get_xid(response: Response):
+    #     if response.url.startswith("https://api.jikipedia.com/go"):
+    #         nonlocal search_entities_response
+    #         search_entities_response = response
+    #         return True
+    #     else:
+    #         return False
+    url = f'https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}'
+    search_entities_response: Response = None
+    try:
+        async with BrowserPage(url, mobile_mode=False,
+                               # response_func=[get_xid],
+                               smart_wait=True) as page:
+            await page.waitFor(1)
+            soup = bs4.BeautifulSoup(await page.content(), 'html.parser')
+            card_content = soup.select_one(".card-content")
+            print("ok")
+            pass
+    except Exception as ex:
+        pass
+    if not search_entities_response:
+        raise GeneralException("get_text_search call failed")
+    xid = search_entities_response.request.headers['xid']
+    response_json = get_search_entities(xid, text)
+    data = response_json['data']
+    if not data:
+        raise GeneralException("get_text_search data not found")
+    founded = filter(lambda x: x['category'] == "definition", data).__next__()
+    if not founded:
+        raise GeneralException("get_text_search definition not found")
+    info = founded['definitions'][0]
+    content = info['content']
+    image_url = info['images'][0]['scaled']['path']
+    id = info['id']
+    return SpiderScriptTextSearchResultVO(content=content, image_url=image_url, link=f"https://jikipedia.com/definition/{str(id)}")
 
 def get_text_search2(text: str) -> List[SpiderScriptTextSearchResultVO]:
     url = f"https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}&category=definition"
@@ -56,3 +96,6 @@ def get_text_search2(text: str) -> List[SpiderScriptTextSearchResultVO]:
         result.append(SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
                                               link=link))
     return result
+
+if __name__ == '__main__':
+    print(event_loop_manager.run_until_complete(get_text_search("小飞棍")))
