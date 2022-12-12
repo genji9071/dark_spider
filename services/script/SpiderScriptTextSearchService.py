@@ -41,42 +41,29 @@ def get_search_entities(xid, text):
         raise GeneralException(response.status_code)
     return response.json()
 
-async def get_text_search(text: str) -> SpiderScriptTextSearchResultVO:
-    # def get_xid(response: Response):
-    #     if response.url.startswith("https://api.jikipedia.com/go"):
-    #         nonlocal search_entities_response
-    #         search_entities_response = response
-    #         return True
-    #     else:
-    #         return False
+
+def mapped_card_contents(card_content) -> SpiderScriptTextSearchResultVO:
+    main_texts = card_content.select_one(".card-middle").select("a")
+    link = main_texts[0]['href']
+    title = main_texts[0].text
+    content = main_texts[1].text
+    image_url = None
+    image = card_content.select_one(".show-images")
+    if image:
+        image_url = card_content.select_one(".show-images").select_one("img")['src']
+    return SpiderScriptTextSearchResultVO(title=title, content=content, image_url=image_url,
+                                          link=link)
+
+
+async def get_text_search(text: str) -> List[SpiderScriptTextSearchResultVO]:
     url = f'https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}'
-    search_entities_response: Response = None
-    try:
-        async with BrowserPage(url, mobile_mode=False,
-                               # response_func=[get_xid],
-                               smart_wait=True) as page:
-            await page.waitFor(1)
-            soup = bs4.BeautifulSoup(await page.content(), 'html.parser')
-            card_content = soup.select_one(".card-content")
-            print("ok")
-            pass
-    except Exception as ex:
-        pass
-    if not search_entities_response:
-        raise GeneralException("get_text_search call failed")
-    xid = search_entities_response.request.headers['xid']
-    response_json = get_search_entities(xid, text)
-    data = response_json['data']
-    if not data:
-        raise GeneralException("get_text_search data not found")
-    founded = filter(lambda x: x['category'] == "definition", data).__next__()
-    if not founded:
-        raise GeneralException("get_text_search definition not found")
-    info = founded['definitions'][0]
-    content = info['content']
-    image_url = info['images'][0]['scaled']['path']
-    id = info['id']
-    return SpiderScriptTextSearchResultVO(content=content, image_url=image_url, link=f"https://jikipedia.com/definition/{str(id)}")
+    async with BrowserPage(url, mobile_mode=False,
+                           # response_func=[get_xid],
+                           smart_wait=True) as page:
+        await page.waitFor(1)
+        soup = bs4.BeautifulSoup(await page.content(), 'html.parser')
+        card_contents = soup.select(".lite-card")
+        return list(map(lambda x: mapped_card_contents(x), card_contents))
 
 def get_text_search2(text: str) -> List[SpiderScriptTextSearchResultVO]:
     url = f"https://jikipedia.com/search?phrase={urllib.parse.quote_plus(text)}&category=definition"
